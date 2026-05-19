@@ -44,7 +44,7 @@ pip install torch lz4 obs-websocket-py
 cd ext/panda3d-kivy/
 pip install .
 ```
-Install NetFI related packets
+Install [NetFI](https://github.com/UVA-DSA/NetFI) related packets
 ```
 cd ../..
 cd tests/dVTrainer/NetFI
