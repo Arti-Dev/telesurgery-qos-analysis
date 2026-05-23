@@ -52,7 +52,7 @@ def process_robot_yaw(robot_data):
 
 # Load trajectory data
 script_dir = os.path.dirname(os.path.abspath(__file__))
-root = os.path.join(script_dir, "../..", "SurRoL_dVTrainer/tests/dVTrainer/Data/exp_data_15/no_fault/freefault3")
+root = os.path.join(script_dir, "../..", "SurRoL_dVTrainer/tests/dVTrainer/Data/exp_data_15/no_fault/freefault1")
 robot_data     = np.loadtxt(os.path.join(root, "robot_sim_data_1.csv"), delimiter=",", skiprows=1)
 completed_data = np.loadtxt(os.path.join(root, "console_data_completed_1.csv"), delimiter=",", skiprows=1)
 command_data   = np.loadtxt(os.path.join(root, "robot_command_data_1.csv"), delimiter=",", skiprows=1)
