@@ -142,11 +142,15 @@ class PacketLossEmulator:
         """Handle UDP packet loss simulation"""
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('0.0.0.0', self.input_port))
-        
+        sock.settimeout(1.0)  # ← add this
         forward_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
         while self.running:
-            data, addr = sock.recvfrom(4096)
+            try:
+                data, addr = sock.recvfrom(4096)
+            except socket.timeout:
+                continue
+
             drop = self.loss_model.should_drop()
             
             if self.log_packets:

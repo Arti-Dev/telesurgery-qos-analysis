@@ -625,7 +625,7 @@ def analyze_experiment_data(experiment_dir: str, output_dir: str):
                 results = analyze_delay(packet_data, received_data)
                 
                 # Create plots
-                plot_analysis(results, output_dir, condition, scenario)
+                #plot_analysis(results, output_dir, condition, scenario)
                 
                 # Save results
                 save_results_to_excel(results, output_dir, condition, scenario)
@@ -647,4 +647,12 @@ if __name__ == "__main__":
     # args = parser.parse_args()
     
     # analyze_experiment_data(args.experiment_dir, args.output_dir)
-    analyze_experiment_data("exp_data_new", "exp_data_new_out")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    root = os.path.join(script_dir, "../..", "SurRoL_dVTrainer/tests/dVTrainer/Data")
+    if not os.path.exists(root):
+        print(f"Error: Root directory {root} not found")
+    subject = "exp_data_15"
+    subject_path = os.path.join(root, subject)
+    if os.path.isdir(subject_path):
+        output_path = os.path.join(root, "exp_data_15_out")
+        analyze_experiment_data(subject_path, output_path)

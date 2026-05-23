@@ -38,6 +38,7 @@ class PacketLoggerEmulator:
             self.input_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.output_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.input_socket.bind(('0.0.0.0', self.input_port))
+            self.input_socket.settimeout(1.0)  # ← add this
         else:
             raise ValueError(f"Unsupported protocol: {self.protocol}")
 
@@ -57,7 +58,7 @@ class PacketLoggerEmulator:
                     # Write packet header: timestamp (8 bytes), length (2 bytes), dropped flag (1 byte)
                     header = struct.pack("!QH?", timestamp, length, dropped)
                     f.write(header)
-                    
+                    print(f"Logged packet: timestamp={timestamp}, length={length}, dropped={dropped}")
                     # Write packet data
                     f.write(struct.pack(f"!{length}s", data))
 
@@ -66,7 +67,7 @@ class PacketLoggerEmulator:
         while self.running:
             try:
                 data, addr = self.input_socket.recvfrom(65535)
-                
+                print(f"Received packet from {addr}: length={len(data)}")
                 # Log the packet
                 timestamp = time.time_ns()
                 entry = (timestamp, len(data), False, data)
@@ -78,8 +79,10 @@ class PacketLoggerEmulator:
                 # Forward the packet
                 self.output_socket.sendto(data, (self.output_ip, self.output_port))
                 
+            except socket.timeout:
+                continue  # ← check self.running again
             except socket.error as e:
-                if self.running:  # Only log errors if we're still supposed to be running
+                if self.running:
                     print(f"Socket error: {e}")
 
     def start(self):
