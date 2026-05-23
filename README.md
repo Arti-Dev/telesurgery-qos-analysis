@@ -22,6 +22,8 @@ Code repository: **A Comprehensive Analysis of the Effects of Network Quality of
 The experiments involved performing the Peg Transfer task under **four primary network conditions**: **Normal** (no degradation), **Packet Loss**, **Delay**, and **Communication Loss**. For each of **the three degradation types**, participants were exposed to **three severity levels (low:1, medium:2, high:3)**. Packet loss, delay and communication loss are denoted as PLM, DLM and CLM, respectively. 
 
 ### How to run the code
+#### Computer System Requirements
+Ubuntu 20.04.6 LTS
 #### Installation
 The `Mantis_Client` folder contains the dVTrainer surgeon console code, which needs to be installed and run with the device.
 
@@ -42,7 +44,7 @@ pip install torch lz4 obs-websocket-py
 cd ext/panda3d-kivy/
 pip install .
 ```
-Install NetFI related packets
+Install [NetFI](https://github.com/UVA-DSA/NetFI) related packets
 ```
 cd ../..
 cd tests/dVTrainer/NetFI
@@ -56,12 +58,14 @@ cd ../..
 python multiple_scenes_console_replay.py
 ```
 Select `Basic Robot Skill Training Tasks` -> `Bi-Peg Transfer` in the interface
+
 Next, open a new terminal and go to `tests` folder and run `replay.py`
 ```
+conda activate sim
 cd telesurgery-qos-analysis/SurRoL_dVTrainer/tests
 python replay.py
 ```
-You will robotic arms move using recorded console packets
+After few seconds, the simulated robotic arms will move with recorded console packets
 
 #### Run Simulator with Emulated Network Condition
 This teleoperation setup transmits ITP packets from the console/haptic device to the simulator via UDP. Ensure that a UDP socket connection is established and the correct **IP address and Port** are configured in `SurRoL_dVTrainer/test/dVTrainer/Console.py` and `Net.py`.
@@ -95,15 +99,15 @@ Here is the demo video for our paper:
 
 
 ## Citations
-If you use this dataset in your work, please consider citing our paper:
-<!-- ```bibtex
-@misc{ge2025expertguidedpromptingretrievalaugmentedgeneration,
-      title={Expert-Guided Prompting and Retrieval-Augmented Generation for Emergency Medical Service Question Answering}, 
-      author={Xueren Ge and Sahil Murtaza and Anthony Cortez and Homa Alemzadeh},
-      year={2025},
-      eprint={2511.10900},
+If you use this dataset and code in your work, please consider citing our paper:
+```bibtex
+@misc{zhang2026comprehensiveanalysiseffectsnetwork,
+      title={A Comprehensive Analysis of the Effects of Network Quality of Service on Robotic Telesurgery}, 
+      author={Zhaomeng Zhang and Seyed Hamid Reza Roodabeh and Homa Alemzadeh},
+      year={2026},
+      eprint={2603.06824},
       archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2511.10900}, 
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2603.06824}, 
 }
-``` -->
+``` 
