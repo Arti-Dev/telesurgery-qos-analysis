@@ -65,12 +65,23 @@ conda activate sim
 cd telesurgery-qos-analysis/SurRoL_dVTrainer/tests
 python replay.py
 ```
-After few seconds, the simulated robotic arms will move with recorded console packets
+After a few seconds, the simulated robotic arms will begin moving using the recorded console packets. Upon completion, the terminal will display the following message: `Replay finished. Sent 41508 packets` Then, click blue `Exit` button on the GUI to quit and stop the connection. The console and simulated robotic arm data will be automatically generated and saved in this directory:`telesurgery-qos-analysis/SurRoL_dVTrainer/tests/dVTrainer/Data/exp_data_15`
 
+#### Plot the Console and Simulated Robotic Trajectories
+To visualize the results, open a new terminal and navigate to the `network` analysis folder to extract the console data from the `.bin` file:
+```
+cd telesurgery-qos-analysis/analysis/network
+python analyze_network_stats_new.py
+```
+Next, plot the trajectories from the csv files:
+```
+python plot_kinematics_example.py
+```
+Note: If your data was saved to a different folder/file name, you will need to update the file paths in the script before running it.
 #### Run Simulator with Emulated Network Condition
-This teleoperation setup transmits ITP packets from the console/haptic device to the simulator via UDP. Ensure that a UDP socket connection is established and the correct **IP address and Port** are configured in `SurRoL_dVTrainer/test/dVTrainer/Console.py` and `Net.py`.
+This teleoperation setup transmits ITP packets from the console/haptic device to the simulator via UDP. Ensure that a UDP socket connection is established and the correct **IP address and Port** are configured in `SurRoL_dVTrainer/tests/dVTrainer/Console.py` and `Net.py`.
 
-The network conditions load from `SurRoL_dVTrainer/test/dVTrainer/network_conditions.txt`. Each line represents one type of network condtion, for example:
+The network conditions load from `SurRoL_dVTrainer/tests/dVTrainer/network_conditions.txt`. Each line represents one type of network condtion, for example:
 ```
 "1 5G delay3 406 [0.89574, 0.10426] [0.01015, 0.01551]"
 --"1": numbers of trial (every run this number is deducted by 1)
