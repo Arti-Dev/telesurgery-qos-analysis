@@ -10,7 +10,14 @@ if _swig_python_version_info < (2, 7, 0):
 
 # Import the low-level C/C++ module
 if __package__ or "." in __name__:
-    from . import _touch_haptic
+    try:
+        from . import _touch_haptic
+    except ImportError:
+        print("[WARNING] libHD.so missing. Haptic hardware drivers not found. Stubbing out haptic functions for simulation-only mode.")
+        class MockTouchHaptic:
+            def __getattr__(self, name):
+                return lambda *args, **kwargs: None if "get" not in name else [0.0, 0.0, 0.0, 0.0]
+        _touch_haptic = MockTouchHaptic()
 else:
     import _touch_haptic
 
