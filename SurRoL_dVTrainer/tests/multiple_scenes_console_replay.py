@@ -2130,6 +2130,8 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.network = Net()
         self.console = Console(self.network)
 
+        self.images = []
+
         self.id=id
         self.demo = demo
         self.closed=True
@@ -2207,9 +2209,9 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
 
         self.network.start()
         self.console.start()
-        self.video_recording = False
+        self.video_recording = True
         self.obs.connect()
-        #self.obs.start_recording()
+        # self.obs.start_recording()
 
     def _step_simulation_task(self, task):
         """Step simulation
@@ -2251,11 +2253,11 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                 if self.video_recording == True:
                     self.logger1.log_data_sim(time.time(), self.console.sequence_num, pos2, rot2, pos1, rot1)
                 
-                # if self.video_recording:
-                #     rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
-                #     img = rgb_array[:, :, :3][:, :, ::-1]
-                #     print("img type:", type(img), "shape:", getattr(img, "shape", None), "dtype:", getattr(img, "dtype", None))
-                #     self.images.append(img)     
+                if self.video_recording:
+                    rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
+                    img = rgb_array[:, :, :3][:, :, ::-1]
+                    print("img type:", type(img), "shape:", getattr(img, "shape", None), "dtype:", getattr(img, "dtype", None))
+                    # self.images.append(img)     
         else:
             if time.time() - self.time > 1/240:
                 self.before_simulation_step()
