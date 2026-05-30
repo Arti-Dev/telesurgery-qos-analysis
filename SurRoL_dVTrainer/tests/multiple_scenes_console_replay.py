@@ -6,6 +6,8 @@ import torch.nn as nn
 import pybullet as p
 from panda3d_kivy.mdapp import MDApp
 
+from PIL import Image
+
 from direct.gui.DirectGui import *
 from panda3d.core import AmbientLight, DirectionalLight, Spotlight, PerspectiveLens
 
@@ -2257,7 +2259,7 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                     rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
                     img = rgb_array[:, :, :3][:, :, ::-1]
                     print("img type:", type(img), "shape:", getattr(img, "shape", None), "dtype:", getattr(img, "dtype", None))
-                    # self.images.append(img)     
+                    self.images.append(img)
         else:
             if time.time() - self.time > 1/240:
                 self.before_simulation_step()
@@ -2453,11 +2455,23 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.console.close()
         self.network.stop()
         #self.generate_video()
+        self.save_images()
         self.obs.stop_recording()
         self.logger1.close()
         self.logger2.close()
         self.kivy_ui.stop()
         self.app.win.removeDisplayRegion(self.ui_display_region)
+
+    def save_images(self):
+        from pathlib import Path
+        rgbDir = Path("rgb/")
+        rgbDir.mkdir(parents=True, exist_ok=True)
+        for file in rgbDir.iterdir():
+            if file.is_file():
+                file.unlink()
+        for i in range(len(self.images)):
+            im = Image.fromarray(self.images[i])
+            im.save(f"rgb/test{i}.png")
 
 
 # ecm steoro size 1024x768
