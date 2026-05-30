@@ -1,4 +1,5 @@
 import re,os
+os.environ["KIVY_NO_ARGS"] = "1"
 from kivy.lang import Builder
 import numpy as np
 import torch
@@ -50,6 +51,8 @@ from dVTrainer.data_collector import DataLogger
 from dVTrainer.random_experiment_new import user_num
 from dVTrainer.obs_controller import OBSController
 from scipy.spatial.transform import Rotation as R
+
+frame_record_period = 5
 
 app = None
 hint_printed = False
@@ -2475,6 +2478,14 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
 
 
 # ecm steoro size 1024x768
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--frame_record_period", type=int, help="How often RGB, Depth, and Object frames are saved"
+                                                            "\n(every n frames)")
+args = parser.parse_args()
+
+frame_record_period = args.frame_record_period
+
 app_cfg = ApplicationConfig(window_width=1850, window_height=1020)
 app = Application(app_cfg)
 open_scene(0)
