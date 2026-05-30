@@ -2258,7 +2258,7 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                 if self.video_recording:
                     rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
                     img = rgb_array[:, :, :3][:, :, ::-1]
-                    print("img type:", type(img), "shape:", getattr(img, "shape", None), "dtype:", getattr(img, "dtype", None))
+                    # print("img type:", type(img), "shape:", getattr(img, "shape", None), "dtype:", getattr(img, "dtype", None))
                     self.images.append(img)
         else:
             if time.time() - self.time > 1/240:
