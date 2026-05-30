@@ -131,41 +131,41 @@ class Panda3DSceneRenderer(BaseRenderer):
         
         self._scene._update_graph(scene_graph, materials_only)
 
-    # def _make_buffer(self, width, height):
-    #     """Make an offscreen buffer.
+    def _make_buffer(self, width, height):
+        """Make an offscreen buffer.
 
-    #     Arguments:
-    #         width {int} -- target buffer width
-    #         height {int} -- target buffer height
-    #     """
+        Arguments:
+            width {int} -- target buffer width
+            height {int} -- target buffer height
+        """
     
-        # fb_prop = p3d.FrameBufferProperties(p3d.FrameBufferProperties.get_default())
-        # fb_prop.set_multisamples(self._multisamples)
-        # fb_prop.set_srgb_color(self._srgb_color)
+        fb_prop = p3d.FrameBufferProperties(p3d.FrameBufferProperties.get_default())
+        fb_prop.set_multisamples(self._multisamples)
+        fb_prop.set_srgb_color(self._srgb_color)
 
-    #     # self._buffer = self._engine.make_output(
-    #     #     self._pipe, name="offscreen", sort=0,
-    #     #     fb_prop=p3d.FrameBufferProperties.get_default(),
-    #     #     win_prop=p3d.WindowProperties(size=(width, height)),
-    #     #     flags=p3d.GraphicsPipe.BFRefuseWindow)
+        self._buffer = self._engine.make_output(
+            self._pipe, name="offscreen", sort=0,
+            fb_prop=p3d.FrameBufferProperties.get_default(),
+            win_prop=p3d.WindowProperties(size=(width, height)),
+            flags=p3d.GraphicsPipe.BFRefuseWindow)
 
-    #     # self.depthBuffer = self.graphicsEngine.makeOutput(
-    #     #     self.pipe, "depth buffer", -2,
-    #     #     fbprops, winprops,
-    #     #     GraphicsPipe.BFRefuseWindow,
-    #     #     self.win.getGsg(), self.win)
+        self.depthBuffer = self.graphicsEngine.makeOutput(
+            self.pipe, "depth buffer", -2,
+            fbprops, winprops,
+            GraphicsPipe.BFRefuseWindow,
+            self.win.getGsg(), self.win)
 
-    #     self._region = self._buffer.make_display_region()
+        self._region = self._buffer.make_display_region()
 
-    #     # self._depth_tex = p3d.Texture()
-    #     # self._depth_tex.setFormat(p3d.Texture.FDepthComponent)
-    #     # self._buffer.addRenderTexture(
-    #     #     self._depth_tex, p3d.GraphicsOutput.RTMCopyRam, p3d.GraphicsOutput.RTPDepth)
+        self._depth_tex = p3d.Texture()
+        self._depth_tex.setFormat(p3d.Texture.FDepthComponent)
+        self._buffer.addRenderTexture(
+            self._depth_tex, p3d.GraphicsOutput.RTMCopyRam, p3d.GraphicsOutput.RTPDepth)
 
-    #     self._color_tex = p3d.Texture()
-    #     self._color_tex.setFormat(p3d.Texture.FRgba8)
-    #     self._buffer.addRenderTexture(
-    #         self._color_tex, p3d.GraphicsOutput.RTMCopyRam, p3d.GraphicsOutput.RTPColor)
+        self._color_tex = p3d.Texture()
+        self._color_tex.setFormat(p3d.Texture.FRgba8)
+        self._buffer.addRenderTexture(
+            self._color_tex, p3d.GraphicsOutput.RTMCopyRam, p3d.GraphicsOutput.RTPColor)
         
     def render_frame(self, scene_state, scene_view, frame):
         """Render a scene at scene_state with a scene_view settings
@@ -210,7 +210,7 @@ class Panda3DSceneRenderer(BaseRenderer):
         # if depth is not None:
         #     frame.depth_img[:] = depth
 
-        # width, height = scene_view.viewport
+        width, height = scene_view.viewport
 
         # if self._buffer is None:
         #     self._make_buffer(width, height)
@@ -276,5 +276,8 @@ class Panda3DSceneRenderer(BaseRenderer):
         #     frame.depth_img[:] = depth_image
         # if mask is not None:
         #     frame.mask_img[:] = mask
+
+        color_image = cv2.resize(color_image, (width, height))
+        frame.color_img[:] = color_image
         
         return True
