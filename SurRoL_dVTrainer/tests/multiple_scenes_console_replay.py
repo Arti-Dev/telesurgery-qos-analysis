@@ -2141,6 +2141,7 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.frame_times = []
         self.prev_time = None
         self.frame_capture_times = []
+        clear_image_directories()
         tracemalloc.start()
 
         self.id=id
@@ -2505,7 +2506,7 @@ def save_images(height, width, rgb_pixels, depth_pixels, seg_pixels, idx):
     # save
     Image.fromarray(rgb_array).save(f"{rgbDir}rgb{idx}.png")
     Image.fromarray(depth_array).save(f"{depthDir}depth{idx}.png")
-    Image.fromarray(seg_array).save(f"{segDir}object{idx}.png")
+    Image.fromarray(seg_array).save(f"{segDir}seg{idx}.png")
 
 def test_save_frames():
     print("Save frames test")
@@ -2549,7 +2550,7 @@ def test_clear_image_directories():
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--do_not_capture_frames", type=bool, default=False, help="Set to false to disable recording frames every n frames")
-parser.add_argument("--frame_capture_interval", type=int, default=5, help="How often RGB, Depth, and Object frames are saved (if enabled)"
+parser.add_argument("--frame_capture_interval", type=int, default=5, help="How often RGB, Depth, and Segmentation frames are saved (if enabled)"
                                                             "\n(every n frames)")
 parser.add_argument("--test", type=bool, default=False, help="Set to true to run unit tests")
 parser.add_argument("--profiler", type=bool, default=False, help="Set to true to output profiler stats at the end of a session")
@@ -2560,8 +2561,6 @@ if args.test:
     test_clear_image_directories()
     test_save_frames()
     exit()
-
-clear_image_directories()
 
 frame_capture_interval = args.frame_capture_interval
 
