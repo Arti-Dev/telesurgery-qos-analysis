@@ -2270,7 +2270,7 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                 if self.video_recording == True:
                     self.logger1.log_data_sim(time.time(), self.console.sequence_num, pos2, rot2, pos1, rot1)
 
-                if self.frames_since_last_capture >= frame_record_period:
+                if not args.do_not_frame_record and self.frames_since_last_capture >= frame_record_period:
                     t = threading.Thread(target=save_images,
                                          args=(height, width, rgb_pixels, depth_pixels, seg_pixels, self.idx))
                     t.start()
@@ -2550,7 +2550,8 @@ def test_clear_image_directories():
 # ecm steoro size 1024x768
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--frame_record_period", type=int, default=5, help="How often RGB, Depth, and Object frames are saved"
+parser.add_argument("--do_not_frame_record", type=bool, default=False, help="Set to false to disable recording frames every n frames")
+parser.add_argument("--frame_record_period", type=int, default=5, help="How often RGB, Depth, and Object frames are saved (if enabled)"
                                                             "\n(every n frames)")
 parser.add_argument("--test", type=bool, default=False, help="Set to true to run unit tests")
 parser.add_argument("--profiler", type=bool, default=False, help="Set to true to output profiler stats at the end of a session")
