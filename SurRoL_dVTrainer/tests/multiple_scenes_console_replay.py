@@ -1,6 +1,6 @@
-import re,os
+import os
 import threading
-from threading import Thread
+import tracemalloc
 
 os.environ["KIVY_NO_ARGS"] = "1"
 from kivy.lang import Builder
@@ -13,7 +13,6 @@ from panda3d_kivy.mdapp import MDApp
 from PIL import Image
 from pathlib import Path
 
-from direct.gui.DirectGui import *
 from panda3d.core import AmbientLight, DirectionalLight, Spotlight, PerspectiveLens
 
 import math
@@ -37,16 +36,11 @@ from surrol.tasks.needle_regrasp_bimanual import NeedleRegrasp
 from surrol.tasks.peg_transfer_bimanual import BiPegTransfer
 from surrol.tasks.pick_and_place import PickAndPlace
 from surrol.tasks.match_board import MatchBoard
-from surrol.tasks.match_board_ii import MatchBoardII 
 
 from surrol.tasks.needle_the_rings import NeedleRings
 # from surrol.tasks.match_board_ii import BiMatchBoard
-from surrol.tasks.ecm_env import EcmEnv, goal_distance,reset_camera
-from surrol.robots.ecm import RENDER_HEIGHT, RENDER_WIDTH, FoV
-from surrol.robots.ecm import Ecm
 
 from haptic_src.touch_haptic import initTouch_right, closeTouch_right, getDeviceAction_right, startScheduler, stopScheduler
-from haptic_src.touch_haptic import initTouch_left, closeTouch_left, getDeviceAction_left
 from direct.task import Task
 from surrol.utils.pybullet_utils import step
 
@@ -2144,6 +2138,11 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.frames_since_last_capture = frame_record_period
         self.idx = 0
 
+        self.frame_times = []
+        self.prev_time = None
+        self.frame_capture_times = []
+        tracemalloc.start()
+
         self.id=id
         self.demo = demo
         self.closed=True
@@ -2237,11 +2236,13 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                 p.stepSimulation()
                 self.after_simulation_step()
 
+                start = time.time()
                 # Call trigger update scene (if necessary) and draw methods
                 (width, height, rgb_pixels, depth_pixels, seg_pixels) = p.getCameraImage(
                     width=256, height=256,
                     viewMatrix=self.env._view_matrix,
                     projectionMatrix=self.env._proj_matrix)
+                self.frame_capture_times.append(time.time() - start)
                 p.setGravity(0,0,-10.0)
                 #print(width, height, rgb_pixels.shape, depth_pixels.shape, seg_pixels.shape)
                 self.time = task.time
@@ -2317,7 +2318,11 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                     # self.start_time=time.time()
                     # self.toggleEcmView()
                     # self.itr += 1
-                        
+
+        if self.prev_time is not None:
+            self.frame_times.append(time.time() - self.prev_time)
+        self.prev_time = time.time()
+
         return Task.cont
 
 
@@ -2474,6 +2479,18 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.logger2.close()
         self.kivy_ui.stop()
         self.app.win.removeDisplayRegion(self.ui_display_region)
+        if args.profiler: self.output_profiling_stats()
+
+    def output_profiling_stats(self):
+        print("======= PROFILER STATS =======")
+        print(f"Average FPS: {1.0 / np.mean(self.frame_times)}fps")
+        print(f"Average frame capture overhead: {np.mean(self.frame_times) * 1000}ms")
+        snapshot = tracemalloc.take_snapshot()
+        print("Tracemalloc memory usage by all threads related to this script:")
+        for stat in snapshot.statistics('lineno'):
+            if __file__ in str(stat.traceback):
+                print(stat)
+        tracemalloc.stop()
 
 def save_images(height, width, rgb_pixels, depth_pixels, object_pixels, idx):
     # format
@@ -2485,7 +2502,7 @@ def save_images(height, width, rgb_pixels, depth_pixels, object_pixels, idx):
 
     # save
     Image.fromarray(rgb_array).save(f"{rgbDir}rgb{idx}.png")
-    Image.fromarray(depth_array).save(f"{depthDir}depth{idx}.png")
+    # Image.fromarray(depth_array).save(f"{depthDir}depth{idx}.png")
     Image.fromarray(object_array).save(f"{objectDir}object{idx}.png")
 
 # Doesn't pass right now
@@ -2528,6 +2545,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--frame_record_period", type=int, default=5, help="How often RGB, Depth, and Object frames are saved"
                                                             "\n(every n frames)")
 parser.add_argument("--test", type=bool, default=False, help="Set to true to run unit tests")
+parser.add_argument("--profiler", type=bool, default=False, help="Set to true to output profiler stats at the end of a session")
 
 args = parser.parse_args()
 
