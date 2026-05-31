@@ -2,10 +2,6 @@ import os
 import threading
 import tracemalloc
 
-import matplotlib
-matplotlib.use("agg")
-from matplotlib import pyplot as plt
-
 os.environ["KIVY_NO_ARGS"] = "1"
 from kivy.lang import Builder
 import numpy as np
@@ -54,9 +50,9 @@ from dVTrainer.random_experiment_new import user_num
 from dVTrainer.obs_controller import OBSController
 from scipy.spatial.transform import Rotation as R
 
-rgbDir = "rgb/"
-depthDir = "depth/"
-objectDir = "object/"
+rgbDir = "dVTrainer/Data/rgb/"
+depthDir = "dVTrainer/Data/depth/"
+segDir = "dVTrainer/Data/seg/"
 
 app = None
 hint_printed = False
@@ -2139,7 +2135,7 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.network = Net()
         self.console = Console(self.network)
 
-        self.frames_since_last_capture = frame_record_period
+        self.frames_since_last_capture = frame_capture_interval
         self.idx = 0
 
         self.frame_times = []
@@ -2270,7 +2266,7 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                 if self.video_recording == True:
                     self.logger1.log_data_sim(time.time(), self.console.sequence_num, pos2, rot2, pos1, rot1)
 
-                if not args.do_not_frame_record and self.frames_since_last_capture >= frame_record_period:
+                if not args.do_not_capture_frames and self.frames_since_last_capture >= frame_capture_interval:
                     t = threading.Thread(target=save_images,
                                          args=(height, width, rgb_pixels, depth_pixels, seg_pixels, self.idx))
                     t.start()
@@ -2496,44 +2492,46 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                 print(stat)
         tracemalloc.stop()
 
-def save_images(height, width, rgb_pixels, depth_pixels, object_pixels, idx):
-    # fig, ax = plt.subplots()
+def save_images(height, width, rgb_pixels, depth_pixels, seg_pixels, idx):
     # format
-    rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
+    rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4)).astype(np.uint8)
     rgb_array = rgb_array[:, :, :3][:, :, ::-1]
 
-    # depth_array = np.reshape(depth_pixels, [width, height])
-    object_array = np.reshape(object_pixels, [width, height])
+    depth_array = np.reshape(depth_pixels, [height, width])
+    # depth pixels are of type np.float32 from 0 to 1, so scale them to 8-bit values and save as grayscale
+    depth_array = (np.clip(depth_array, 0.0, 1.0) * 255.0).astype(np.uint8)
+    seg_array = np.reshape(seg_pixels, [height, width]).astype(np.uint8)
 
     # save
     Image.fromarray(rgb_array).save(f"{rgbDir}rgb{idx}.png")
-    # ax.imshow(depth_array, cmap='gray', vmin=0, vmax=1)
-    # fig.savefig(f"{depthDir}depth{idx}.png")
-    Image.fromarray(object_array).save(f"{objectDir}object{idx}.png")
-    # ax.clear()
-    # plt.close(fig)
+    Image.fromarray(depth_array).save(f"{depthDir}depth{idx}.png")
+    Image.fromarray(seg_array).save(f"{segDir}object{idx}.png")
 
-# Doesn't pass right now
 def test_save_frames():
     print("Save frames test")
-    save_images(2, 2, np.zeros(16), np.zeros(4), np.zeros(4), 1)
-    print("Saved four-pixel files, check for them!")
+    save_images(2, 2,
+                [255, 255, 255, 255,
+                       255, 0, 0, 255,
+                        0, 255, 0, 255,
+                        0, 0, 255, 255],
+                [0.1, 0.3, 0.5, 0.9], [30, 100, 200, 255], 1)
+    print("Saved four-pixel files. Each pixel should have distinct colors or shades.")
 
 
 def clear_image_directories():
     rgb_path = Path(rgbDir)
     depth_path = Path(depthDir)
-    object_path = Path(objectDir)
+    seg_path = Path(segDir)
     rgb_path.mkdir(parents=True, exist_ok=True)
     depth_path.mkdir(parents=True, exist_ok=True)
-    object_path.mkdir(parents=True, exist_ok=True)
+    seg_path.mkdir(parents=True, exist_ok=True)
     for file in rgb_path.iterdir():
         if file.is_file():
             file.unlink()
     for file in depth_path.iterdir():
         if file.is_file():
             file.unlink()
-    for file in object_path.iterdir():
+    for file in seg_path.iterdir():
         if file.is_file():
             file.unlink()
 
@@ -2544,14 +2542,14 @@ def test_clear_image_directories():
         print("rgbDir is empty")
     if not os.listdir(depthDir):
         print("depthDir is empty")
-    if not os.listdir(objectDir):
-        print("objectDir is empty")
+    if not os.listdir(segDir):
+        print("segDir is empty")
 
 # ecm steoro size 1024x768
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--do_not_frame_record", type=bool, default=False, help="Set to false to disable recording frames every n frames")
-parser.add_argument("--frame_record_period", type=int, default=5, help="How often RGB, Depth, and Object frames are saved (if enabled)"
+parser.add_argument("--do_not_capture_frames", type=bool, default=False, help="Set to false to disable recording frames every n frames")
+parser.add_argument("--frame_capture_interval", type=int, default=5, help="How often RGB, Depth, and Object frames are saved (if enabled)"
                                                             "\n(every n frames)")
 parser.add_argument("--test", type=bool, default=False, help="Set to true to run unit tests")
 parser.add_argument("--profiler", type=bool, default=False, help="Set to true to output profiler stats at the end of a session")
@@ -2565,7 +2563,7 @@ if args.test:
 
 clear_image_directories()
 
-frame_record_period = args.frame_record_period
+frame_capture_interval = args.frame_capture_interval
 
 app_cfg = ApplicationConfig(window_width=1850, window_height=1020)
 app = Application(app_cfg)
