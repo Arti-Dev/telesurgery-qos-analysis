@@ -1,4 +1,7 @@
 import re,os
+import threading
+from threading import Thread
+
 os.environ["KIVY_NO_ARGS"] = "1"
 from kivy.lang import Builder
 import numpy as np
@@ -8,6 +11,7 @@ import pybullet as p
 from panda3d_kivy.mdapp import MDApp
 
 from PIL import Image
+from pathlib import Path
 
 from direct.gui.DirectGui import *
 from panda3d.core import AmbientLight, DirectionalLight, Spotlight, PerspectiveLens
@@ -52,7 +56,9 @@ from dVTrainer.random_experiment_new import user_num
 from dVTrainer.obs_controller import OBSController
 from scipy.spatial.transform import Rotation as R
 
-frame_record_period = 5
+rgbDir = "rgb/"
+depthDir = "depth/"
+objectDir = "object/"
 
 app = None
 hint_printed = False
@@ -2135,7 +2141,8 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.network = Net()
         self.console = Console(self.network)
 
-        self.images = []
+        self.frames_since_last_capture = frame_record_period
+        self.idx = 0
 
         self.id=id
         self.demo = demo
@@ -2258,11 +2265,17 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                 if self.video_recording == True:
                     self.logger1.log_data_sim(time.time(), self.console.sequence_num, pos2, rot2, pos1, rot1)
                 
-                if self.video_recording:
+                if self.video_recording and self.frames_since_last_capture >= frame_record_period:
                     rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
                     img = rgb_array[:, :, :3][:, :, ::-1]
                     # print("img type:", type(img), "shape:", getattr(img, "shape", None), "dtype:", getattr(img, "dtype", None))
-                    self.images.append(img)
+                    t = threading.Thread(target=self.save_images, args=(img, depth_pixels, seg_pixels, self.idx))
+                    t.start()
+
+                    self.frames_since_last_capture = 0
+                    self.idx += 1
+                else:
+                    self.frames_since_last_capture += 1
         else:
             if time.time() - self.time > 1/240:
                 self.before_simulation_step()
@@ -2458,31 +2471,43 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.console.close()
         self.network.stop()
         #self.generate_video()
-        self.save_images()
         self.obs.stop_recording()
         self.logger1.close()
         self.logger2.close()
         self.kivy_ui.stop()
         self.app.win.removeDisplayRegion(self.ui_display_region)
 
-    def save_images(self):
-        from pathlib import Path
-        rgbDir = Path("rgb/")
-        rgbDir.mkdir(parents=True, exist_ok=True)
-        for file in rgbDir.iterdir():
-            if file.is_file():
-                file.unlink()
-        for i in range(len(self.images)):
-            im = Image.fromarray(self.images[i])
-            im.save(f"rgb/test{i}.png")
+    def save_images(self, rgb, depth, object, idx):
+        Image.fromarray(rgb).save(f"{rgbDir}rgb{idx}.png")
+        # Image.fromarray(depth).save(f"{depthDir}depth{idx}.png")
+        Image.fromarray(object).save(f"{objectDir}object{idx}.png")
 
+
+def clear_image_directories():
+    rgb_path = Path(rgbDir)
+    depth_path = Path(depthDir)
+    object_path = Path(objectDir)
+    rgb_path.mkdir(parents=True, exist_ok=True)
+    depth_path.mkdir(parents=True, exist_ok=True)
+    object_path.mkdir(parents=True, exist_ok=True)
+    for file in rgb_path.iterdir():
+        if file.is_file():
+            file.unlink()
+    for file in depth_path.iterdir():
+        if file.is_file():
+            file.unlink()
+    for file in object_path.iterdir():
+        if file.is_file():
+            file.unlink()
 
 # ecm steoro size 1024x768
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--frame_record_period", type=int, help="How often RGB, Depth, and Object frames are saved"
+parser.add_argument("--frame_record_period", type=int, default=5, help="How often RGB, Depth, and Object frames are saved"
                                                             "\n(every n frames)")
 args = parser.parse_args()
+
+clear_image_directories()
 
 frame_record_period = args.frame_record_period
 
