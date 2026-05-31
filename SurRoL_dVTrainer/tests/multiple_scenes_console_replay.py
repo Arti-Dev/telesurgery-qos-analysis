@@ -2264,12 +2264,10 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                 
                 if self.video_recording == True:
                     self.logger1.log_data_sim(time.time(), self.console.sequence_num, pos2, rot2, pos1, rot1)
-                
-                if self.video_recording and self.frames_since_last_capture >= frame_record_period:
-                    rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
-                    img = rgb_array[:, :, :3][:, :, ::-1]
-                    # print("img type:", type(img), "shape:", getattr(img, "shape", None), "dtype:", getattr(img, "dtype", None))
-                    t = threading.Thread(target=self.save_images, args=(img, depth_pixels, seg_pixels, self.idx))
+
+                if self.frames_since_last_capture >= frame_record_period:
+                    t = threading.Thread(target=save_images,
+                                         args=(height, width, rgb_pixels, depth_pixels, seg_pixels, self.idx))
                     t.start()
 
                     self.frames_since_last_capture = 0
@@ -2477,10 +2475,24 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.kivy_ui.stop()
         self.app.win.removeDisplayRegion(self.ui_display_region)
 
-    def save_images(self, rgb, depth, object, idx):
-        Image.fromarray(rgb).save(f"{rgbDir}rgb{idx}.png")
-        # Image.fromarray(depth).save(f"{depthDir}depth{idx}.png")
-        Image.fromarray(object).save(f"{objectDir}object{idx}.png")
+def save_images(height, width, rgb_pixels, depth_pixels, object_pixels, idx):
+    # format
+    rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
+    rgb_array = rgb_array[:, :, :3][:, :, ::-1]
+
+    depth_array = np.reshape(depth_pixels, [width, height])
+    object_array = np.reshape(object_pixels, [width, height])
+
+    # save
+    Image.fromarray(rgb_array).save(f"{rgbDir}rgb{idx}.png")
+    Image.fromarray(depth_array).save(f"{depthDir}depth{idx}.png")
+    Image.fromarray(object_array).save(f"{objectDir}object{idx}.png")
+
+# Doesn't pass right now
+def test_save_frames():
+    print("Save frames test")
+    save_images(2, 2, np.zeros(16), np.zeros(4), np.zeros(4), 1)
+    print("Saved four-pixel files, check for them!")
 
 
 def clear_image_directories():
@@ -2500,12 +2512,29 @@ def clear_image_directories():
         if file.is_file():
             file.unlink()
 
+def test_clear_image_directories():
+    print("Clear image directories test")
+    clear_image_directories()
+    if not os.listdir(rgbDir):
+        print("rgbDir is empty")
+    if not os.listdir(depthDir):
+        print("depthDir is empty")
+    if not os.listdir(objectDir):
+        print("objectDir is empty")
+
 # ecm steoro size 1024x768
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--frame_record_period", type=int, default=5, help="How often RGB, Depth, and Object frames are saved"
                                                             "\n(every n frames)")
+parser.add_argument("--test", type=bool, default=False, help="Set to true to run unit tests")
+
 args = parser.parse_args()
+
+if args.test:
+    test_clear_image_directories()
+    test_save_frames()
+    exit()
 
 clear_image_directories()
 
