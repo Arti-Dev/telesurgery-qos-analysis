@@ -65,7 +65,7 @@ pedal_data = console_data[:, 16] * -1 + 1
 left_grasper, right_grasper = get_robot_grasper_commands(command_data)
 
 # Time axes (relative to start)
-t_robot   = robot_data[:, 0]   - robot_data[0, 0]
+t_robot   = robot_data[:, 0]   - robot_data[0, 0] # - 2.5
 t_console = console_data[:, 0] - console_data[0, 0]
 max_time = max(t_robot[-1], t_console[-1])
 
@@ -78,11 +78,15 @@ for ax, r_col, c_col, label in zip(axs[:3], [2, 3, 4], [2, 3, 4], ['X', 'Y', 'Z'
     ax.plot(t_console, console_data[:, c_col] - console_data[0, c_col], '--', label='Console')
     ax.set_ylabel(f'{label} Position')
     ax.legend()
+    diff = (console_data[:, c_col] - console_data[0, c_col]) - (robot_data[:, r_col]   - robot_data[0, r_col])
+    print(f"For Left Arm {label} Position, Mean Diff: {np.mean(diff)}")
 
 axs[3].plot(t_robot,   robot_data[:, 7]   - robot_data[0, 7],   label='Robot Yaw')
 axs[3].plot(t_console, console_data[:, 7] - console_data[0, 7], '--', label='Console Yaw')
 axs[3].set_ylabel('Yaw')
 axs[3].legend()
+diff = (console_data[:, 7] - console_data[0, 7]) - (robot_data[:, 7]   - robot_data[0, 7])
+print(f"For Left Arm Yaw, Mean Diff: {np.mean(diff)}")
 
 axs[4].plot(t_console, left_grasper, label='Left Grasper')
 axs[4].set_ylabel('Grasper')
@@ -113,11 +117,15 @@ for ax, r_col, c_col, label in zip(axs2[:3], [8, 9, 10], [8, 9, 10], ['X', 'Y', 
     ax.plot(t_console, console_data[:, c_col] - console_data[0, c_col], '--', label='Console')
     ax.set_ylabel(f'{label} Position')
     ax.legend()
+    diff = (console_data[:, c_col] - console_data[0, c_col]) - (robot_data[:, r_col] - robot_data[0, r_col])
+    print(f"For Right Arm {label} Position, Mean Diff: {np.mean(diff)}")
 
 axs2[3].plot(t_robot,   robot_data[:, 13]   - robot_data[0, 13],   label='Robot Yaw')
 axs2[3].plot(t_console, console_data[:, 13] - console_data[0, 13], '--', label='Console Yaw')
 axs2[3].set_ylabel('Yaw')
 axs2[3].legend()
+diff = (console_data[:, 13] - console_data[0, 13]) - (robot_data[:, 13]   - robot_data[0, 13])
+print(f"For Right Arm Yaw, Mean Diff: {np.mean(diff)}")
 
 axs2[4].plot(t_console, right_grasper, label='Right Grasper')
 axs2[4].set_ylabel('Grasper')

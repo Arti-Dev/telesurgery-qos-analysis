@@ -1,5 +1,12 @@
-import re,os
-import sys
+import os
+import threading
+import tracemalloc
+
+import matplotlib
+matplotlib.use("agg")
+from matplotlib import pyplot as plt
+
+os.environ["KIVY_NO_ARGS"] = "1"
 from kivy.lang import Builder
 import numpy as np
 import torch
@@ -8,8 +15,8 @@ import pybullet as p
 from panda3d_kivy.mdapp import MDApp
 
 from PIL import Image
+from pathlib import Path
 
-from direct.gui.DirectGui import *
 from panda3d.core import AmbientLight, DirectionalLight, Spotlight, PerspectiveLens
 
 import math
@@ -33,16 +40,11 @@ from surrol.tasks.needle_regrasp_bimanual import NeedleRegrasp
 from surrol.tasks.peg_transfer_bimanual import BiPegTransfer
 from surrol.tasks.pick_and_place import PickAndPlace
 from surrol.tasks.match_board import MatchBoard
-from surrol.tasks.match_board_ii import MatchBoardII 
 
 from surrol.tasks.needle_the_rings import NeedleRings
 # from surrol.tasks.match_board_ii import BiMatchBoard
-from surrol.tasks.ecm_env import EcmEnv, goal_distance,reset_camera
-from surrol.robots.ecm import RENDER_HEIGHT, RENDER_WIDTH, FoV
-from surrol.robots.ecm import Ecm
 
 from haptic_src.touch_haptic import initTouch_right, closeTouch_right, getDeviceAction_right, startScheduler, stopScheduler
-from haptic_src.touch_haptic import initTouch_left, closeTouch_left, getDeviceAction_left
 from direct.task import Task
 from surrol.utils.pybullet_utils import step
 
@@ -51,6 +53,10 @@ from dVTrainer.data_collector import DataLogger
 from dVTrainer.random_experiment_new import user_num
 from dVTrainer.obs_controller import OBSController
 from scipy.spatial.transform import Rotation as R
+
+rgbDir = "rgb/"
+depthDir = "depth/"
+objectDir = "object/"
 
 app = None
 hint_printed = False
@@ -2133,7 +2139,13 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.network = Net()
         self.console = Console(self.network)
 
-        self.images = []
+        self.frames_since_last_capture = frame_record_period
+        self.idx = 0
+
+        self.frame_times = []
+        self.prev_time = None
+        self.frame_capture_times = []
+        tracemalloc.start()
 
         self.id=id
         self.demo = demo
@@ -2228,11 +2240,13 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                 p.stepSimulation()
                 self.after_simulation_step()
 
+                start = time.time()
                 # Call trigger update scene (if necessary) and draw methods
                 (width, height, rgb_pixels, depth_pixels, seg_pixels) = p.getCameraImage(
                     width=256, height=256,
                     viewMatrix=self.env._view_matrix,
                     projectionMatrix=self.env._proj_matrix)
+                self.frame_capture_times.append(time.time() - start)
                 p.setGravity(0,0,-10.0)
                 #print(width, height, rgb_pixels.shape, depth_pixels.shape, seg_pixels.shape)
                 self.time = task.time
@@ -2255,12 +2269,16 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                 
                 if self.video_recording == True:
                     self.logger1.log_data_sim(time.time(), self.console.sequence_num, pos2, rot2, pos1, rot1)
-                
-                if self.video_recording:
-                    rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
-                    img = rgb_array[:, :, :3][:, :, ::-1]
-                    print("img type:", type(img), "shape:", getattr(img, "shape", None), "dtype:", getattr(img, "dtype", None))
-                    self.images.append(img)
+
+                if not args.do_not_frame_record and self.frames_since_last_capture >= frame_record_period:
+                    t = threading.Thread(target=save_images,
+                                         args=(height, width, rgb_pixels, depth_pixels, seg_pixels, self.idx))
+                    t.start()
+
+                    self.frames_since_last_capture = 0
+                    self.idx += 1
+                else:
+                    self.frames_since_last_capture += 1
         else:
             if time.time() - self.time > 1/240:
                 self.before_simulation_step()
@@ -2304,7 +2322,11 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
                     # self.start_time=time.time()
                     # self.toggleEcmView()
                     # self.itr += 1
-                        
+
+        if self.prev_time is not None:
+            self.frame_times.append(time.time() - self.prev_time)
+        self.prev_time = time.time()
+
         return Task.cont
 
 
@@ -2456,27 +2478,95 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         self.console.close()
         self.network.stop()
         #self.generate_video()
-        self.save_images()
         self.obs.stop_recording()
         self.logger1.close()
         self.logger2.close()
         self.kivy_ui.stop()
         self.app.win.removeDisplayRegion(self.ui_display_region)
+        if args.profiler: self.output_profiling_stats()
 
-    def save_images(self):
-        from pathlib import Path
-        rgbDir = Path("rgb/")
-        rgbDir.mkdir(parents=True, exist_ok=True)
-        for file in rgbDir.iterdir():
-            if file.is_file():
-                file.unlink()
-        for i in range(len(self.images)):
-            im = Image.fromarray(self.images[i])
-            im.save(f"rgb/test{i}.png")
+    def output_profiling_stats(self):
+        print("======= PROFILER STATS =======")
+        print(f"Average FPS: {1.0 / np.mean(self.frame_times)}fps")
+        print(f"Average frame capture overhead: {np.mean(self.frame_times) * 1000}ms")
+        snapshot = tracemalloc.take_snapshot()
+        print("Tracemalloc memory usage by all threads related to this script:")
+        for stat in snapshot.statistics('lineno'):
+            if __file__ in str(stat.traceback):
+                print(stat)
+        tracemalloc.stop()
 
+def save_images(height, width, rgb_pixels, depth_pixels, object_pixels, idx):
+    # fig, ax = plt.subplots()
+    # format
+    rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
+    rgb_array = rgb_array[:, :, :3][:, :, ::-1]
+
+    # depth_array = np.reshape(depth_pixels, [width, height])
+    object_array = np.reshape(object_pixels, [width, height])
+
+    # save
+    Image.fromarray(rgb_array).save(f"{rgbDir}rgb{idx}.png")
+    # ax.imshow(depth_array, cmap='gray', vmin=0, vmax=1)
+    # fig.savefig(f"{depthDir}depth{idx}.png")
+    Image.fromarray(object_array).save(f"{objectDir}object{idx}.png")
+    # ax.clear()
+    # plt.close(fig)
+
+# Doesn't pass right now
+def test_save_frames():
+    print("Save frames test")
+    save_images(2, 2, np.zeros(16), np.zeros(4), np.zeros(4), 1)
+    print("Saved four-pixel files, check for them!")
+
+
+def clear_image_directories():
+    rgb_path = Path(rgbDir)
+    depth_path = Path(depthDir)
+    object_path = Path(objectDir)
+    rgb_path.mkdir(parents=True, exist_ok=True)
+    depth_path.mkdir(parents=True, exist_ok=True)
+    object_path.mkdir(parents=True, exist_ok=True)
+    for file in rgb_path.iterdir():
+        if file.is_file():
+            file.unlink()
+    for file in depth_path.iterdir():
+        if file.is_file():
+            file.unlink()
+    for file in object_path.iterdir():
+        if file.is_file():
+            file.unlink()
+
+def test_clear_image_directories():
+    print("Clear image directories test")
+    clear_image_directories()
+    if not os.listdir(rgbDir):
+        print("rgbDir is empty")
+    if not os.listdir(depthDir):
+        print("depthDir is empty")
+    if not os.listdir(objectDir):
+        print("objectDir is empty")
 
 # ecm steoro size 1024x768
-print(sys.argv)
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--do_not_frame_record", type=bool, default=False, help="Set to false to disable recording frames every n frames")
+parser.add_argument("--frame_record_period", type=int, default=5, help="How often RGB, Depth, and Object frames are saved (if enabled)"
+                                                            "\n(every n frames)")
+parser.add_argument("--test", type=bool, default=False, help="Set to true to run unit tests")
+parser.add_argument("--profiler", type=bool, default=False, help="Set to true to output profiler stats at the end of a session")
+
+args = parser.parse_args()
+
+if args.test:
+    test_clear_image_directories()
+    test_save_frames()
+    exit()
+
+clear_image_directories()
+
+frame_record_period = args.frame_record_period
+
 app_cfg = ApplicationConfig(window_width=1850, window_height=1020)
 app = Application(app_cfg)
 open_scene(0)

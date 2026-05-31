@@ -32,6 +32,10 @@ class PacketLoggerEmulator:
         self.log_lock = Lock()
         self.log_event = Event()
 
+        print("init packet logger")
+        self.start_time = time.time()
+        self.time_first_input_received = None
+
     def _init_sockets(self):
         """Initialize UDP sockets for input and output"""
         if self.protocol == 'udp':
@@ -68,6 +72,8 @@ class PacketLoggerEmulator:
             try:
                 data, addr = self.input_socket.recvfrom(65535)
                 print(f"Received packet from {addr}: length={len(data)}")
+                if self.time_first_input_received is None:
+                    self.time_first_input_received = time.time()
                 # Log the packet
                 timestamp = time.time_ns()
                 entry = (timestamp, len(data), False, data)
@@ -120,3 +126,4 @@ class PacketLoggerEmulator:
             self.writer_thread.join()
         
         print("[PacketLogger] Stopped")
+        print(f"Time to get first packet: {self.time_first_input_received - self.start_time}")
