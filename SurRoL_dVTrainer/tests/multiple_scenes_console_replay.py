@@ -1,4 +1,5 @@
 import re,os
+import sys
 from kivy.lang import Builder
 import numpy as np
 import torch
@@ -2475,6 +2476,7 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
 
 
 # ecm steoro size 1024x768
+print(sys.argv)
 app_cfg = ApplicationConfig(window_width=1850, window_height=1020)
 app = Application(app_cfg)
 open_scene(0)
