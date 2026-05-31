@@ -2,6 +2,10 @@ import os
 import threading
 import tracemalloc
 
+import matplotlib
+matplotlib.use("agg")
+from matplotlib import pyplot as plt
+
 os.environ["KIVY_NO_ARGS"] = "1"
 from kivy.lang import Builder
 import numpy as np
@@ -2493,17 +2497,21 @@ class SurgicalSimulatorBimanual(SurgicalSimulatorBase):
         tracemalloc.stop()
 
 def save_images(height, width, rgb_pixels, depth_pixels, object_pixels, idx):
+    # fig, ax = plt.subplots()
     # format
     rgb_array = np.array(rgb_pixels, dtype=np.uint8).reshape((height, width, 4))
     rgb_array = rgb_array[:, :, :3][:, :, ::-1]
 
-    depth_array = np.reshape(depth_pixels, [width, height])
+    # depth_array = np.reshape(depth_pixels, [width, height])
     object_array = np.reshape(object_pixels, [width, height])
 
     # save
     Image.fromarray(rgb_array).save(f"{rgbDir}rgb{idx}.png")
-    # Image.fromarray(depth_array).save(f"{depthDir}depth{idx}.png")
+    # ax.imshow(depth_array, cmap='gray', vmin=0, vmax=1)
+    # fig.savefig(f"{depthDir}depth{idx}.png")
     Image.fromarray(object_array).save(f"{objectDir}object{idx}.png")
+    # ax.clear()
+    # plt.close(fig)
 
 # Doesn't pass right now
 def test_save_frames():
