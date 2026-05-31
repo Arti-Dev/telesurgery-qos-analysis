@@ -50,10 +50,6 @@ from dVTrainer.random_experiment_new import user_num
 from dVTrainer.obs_controller import OBSController
 from scipy.spatial.transform import Rotation as R
 
-rgbDir = "dVTrainer/Data/rgb/"
-depthDir = "dVTrainer/Data/depth/"
-segDir = "dVTrainer/Data/seg/"
-
 app = None
 hint_printed = False
 resetFlag = False
@@ -2540,22 +2536,28 @@ def test_clear_image_directories():
     print("Clear image directories test")
     clear_image_directories()
     if not os.listdir(rgbDir):
-        print("rgbDir is empty")
+        print(f"rgbDir ({rgbDir}) is empty")
     if not os.listdir(depthDir):
-        print("depthDir is empty")
+        print(f"depthDir ({depthDir}) is empty")
     if not os.listdir(segDir):
-        print("segDir is empty")
+        print(f"segDir ({segDir}) is empty")
 
 # ecm steoro size 1024x768
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--do_not_capture_frames", type=bool, default=False, help="Set to false to disable recording frames every n frames")
+
+parser.add_argument("--do_not_capture_frames", action='store_true', default=False, help="Set to false to disable recording frames every n frames")
 parser.add_argument("--frame_capture_interval", type=int, default=5, help="How often RGB, Depth, and Segmentation frames are saved (if enabled)"
                                                             "\n(every n frames)")
-parser.add_argument("--test", type=bool, default=False, help="Set to true to run unit tests")
-parser.add_argument("--profiler", type=bool, default=False, help="Set to true to output profiler stats at the end of a session")
+parser.add_argument("--test", action='store_true', default=False, help="Set to true to run unit tests")
+parser.add_argument("--profiler", action='store_true', default=False, help="Set to true to output profiler stats at the end of a session")
+parser.add_argument("--frame_capture_directory", type=str, default="dVTrainer/Data/", help="Set directory for frame captures")
 
 args = parser.parse_args()
+
+rgbDir = args.frame_capture_directory + "rgb/"
+depthDir = args.frame_capture_directory + "depth/"
+segDir = args.frame_capture_directory + "seg/"
 
 if args.test:
     test_clear_image_directories()
