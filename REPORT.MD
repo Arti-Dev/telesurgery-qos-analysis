@@ -31,6 +31,45 @@ A more permanent fix would involve modification of the simulation environment in
 Lastly the simulation should be framerate-independent.
 
 ## 5. Part 3: Simulation Development
+
+### (Trying to) export frames
+
+The first thing I did was identify where the main simulation loop was. 
+After skimming a little I noticed the function `getCameraImage()` from PyBullet that seemed to return exactly what was asked for.
+I noticed commented out code that would convert this data into an image, so I uncommented it and used PIL to convert it.
+
+![img.png](report-files/static.png)
+
+The RGB frame looked like this at first, which did not look correct. I turned to Gemini to try to come up with a fix, which
+insisted that it was a NumPy formatting error - it was not.
+
+The PyBullet documentation gave me a good idea of what `getCameraImage()` returns, but not much else.
+I was also confused as to why in its other usages, the results of `getCameraImage()` were unused.
+
+Once I found the [pybullet-rendering](https://github.com/ikalevatykh/pybullet_rendering) documentation it made more sense.
+This allows external renderers to intercept `getCameraImage()` and return different rendering results, which is done
+by inheriting `BaseRenderer` and implementing the `render_frame` method. By altering the parameter `frame` passed into that method,
+that changes what PyBullet's `getCameraImage()` returns.
+
+I traced SurRol's external renderer to `surrol/gui/pybullet_renderer` and studied the code. The `frame` parameter was untouched
+which would explain why I was not seeing anything. I uncommented some code that would take a screenshot of the rendering and
+put that in `frame.color_img`, which successfully allowed me to extract that in `multiple_scenes_console_replay.py`.
+However, that is just a screenshot and not the RGB frames.
+
+I see a bunch of commented out code that would potentially allow me to properly extract the requested data.
+However, I have had difficulty understanding it, and thus I haven't gotten there yet.
+
+I have tried looking at the panda3d-based renderer provided by pybullet-rendering (`P3dRenderer`), but that seems to diverge from what SurRol does.
+I have also looked at the `getCameraImageTest.py` script in the PyBullet examples.
+
+### Writing to disk
+
+I have split output into three folders, one for RGB, one for depth, and one for segmentation masks.
+
+Every nth frame a new thread is spawned to read the output of `getCameraImage()`, convert the NumPy arrays to images, and save them to disk.
+
+Multithreading allows the simulation to continue running without blocking the main thread with file writes.
+
 ## 6. Code Changes
 ## 7. Usage Instructions
 ## 8. Results
