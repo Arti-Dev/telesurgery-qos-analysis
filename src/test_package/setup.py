@@ -25,6 +25,9 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            # executable-name = package-name.node-name:function
+            'talker = test_package.minimal_publisher:main',
+            'listener = test_package.minimal_subscriber:main',
         ],
     },
 )
